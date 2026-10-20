@@ -32,8 +32,11 @@ export function buildLiveModel(data = {}, { now = Date.now(), weeks = 8 } = {}) 
   const rows = Array.isArray(data.rows) ? data.rows : [];
   const mapping = data.statusMapping || {};
   const open = rows.filter(isOpen);
-  const waitingOnYou = open.filter((r) => inMapping(r, mapping.awaitingCustomer));
-  const waitingOnSupport = open.filter((r) => inMapping(r, mapping.awaitingSupport));
+  // Without a status mapping, statuses that mention the customer count as waiting on them, and the rest as with the team.
+  const mapped = (mapping.awaitingCustomer || []).length || (mapping.awaitingSupport || []).length;
+  const onCustomer = (r) => (mapped ? inMapping(r, mapping.awaitingCustomer) : /customer|client|your reply|waiting for you/i.test(r.status || ''));
+  const waitingOnYou = open.filter(onCustomer);
+  const waitingOnSupport = mapped ? open.filter((r) => inMapping(r, mapping.awaitingSupport)) : open.filter((r) => !onCustomer(r));
   const resolvedSince = (ms) => rows.filter((r) => time(r.resolved) && time(r.resolved) >= now - ms);
 
   const thisWeek = weekStart(now);
@@ -94,7 +97,7 @@ export function buildLiveModel(data = {}, { now = Date.now(), weeks = 8 } = {}) 
 function bars(rows, total) {
   if (!rows.length) return '<p class="live-empty">Nothing open.</p>';
   const max = Math.max(...rows.map((r) => r[1]), 1);
-  return `<ul class="live-bars">${rows.map(([label, n]) => `<li><span class="live-bar-label" title="${esc(label)}">${esc(label)}</span><span class="live-bar-track"><span class="live-bar-fill" style="width:${Math.max(4, Math.round((n / max) * 100))}%"></span></span><strong>${n}</strong></li>`).join('')}</ul>${total ? '' : ''}`;
+  return `<ul class="live-bars">${rows.map(([label, n]) => `<li><span class="live-bar-label" title="${esc(label)}">${esc(label)}</span><svg class="live-bar" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect class="live-bar-track" width="100" height="10" rx="5"/><rect class="live-bar-fill" width="${Math.max(3, Math.round((n / max) * 100))}" height="10" rx="5"/></svg><strong>${n}</strong></li>`).join('')}</ul>${total ? '' : ''}`;
 }
 
 function trendChart(trend) {

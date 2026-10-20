@@ -109,8 +109,9 @@ body.expanded.live-on .cards,body.expanded.live-on #open-split-section,body.expa
 .live-bars{list-style:none;margin:0;padding:0;display:grid;gap:7px}
 .live-bars li{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.6fr) auto;align-items:center;gap:8px;font-size:12.5px}
 .live-bar-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--nq-text-subtle)}
-.live-bar-track{height:10px;border-radius:999px;background:var(--nq-bg-neutral);overflow:hidden}
-.live-bar-fill{display:block;height:100%;border-radius:999px;background:var(--brand)}
+.live-bar{width:100%;height:10px;display:block}
+.live-bar-track{fill:var(--nq-bg-neutral)}
+.live-bar-fill{fill:var(--brand)}
 .live-trend{width:100%;height:230px;display:block}
 .live-trend text{font-size:10px;fill:var(--nq-text-subtlest)}
 .live-axis{stroke:var(--nq-border)}

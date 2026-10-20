@@ -79,3 +79,13 @@ test('server counts drive the open total and weekly trend when present', () => {
   assert.equal(m.kpis.resolvedThisWeek, 1, 'falls back to counting rows when a count is missing');
   assert.ok(renderLiveDashboard(m, { now: NOW }).includes('500 oldest open requests'));
 });
+
+test('without a status mapping, customer statuses are waiting on the client and the rest with the team', () => {
+  const m = buildLiveModel({ rows: [row('A', { status: 'Awaiting Customer Feedback', statusId: '1' }), row('B', { status: 'Assigned to 2nd Line', statusId: '2' }), row('C', { status: 'Waiting for Support', statusId: '3' })] }, { now: NOW });
+  assert.equal(m.kpis.waitingOnYou, 1);
+  assert.equal(m.kpis.waitingOnSupport, 2);
+});
+
+test('bars are drawn without inline style attributes', () => {
+  assert.ok(!renderLiveDashboard(buildLiveModel(data, { now: NOW }), { now: NOW }).includes('style='));
+});
