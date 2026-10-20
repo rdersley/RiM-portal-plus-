@@ -55,3 +55,27 @@ test('the dashboard renders escaped text and every section', () => {
   assert.ok(!html.includes('<img src=x'));
   for (const s of ['Open by status', 'Open by Station', 'Open by request type', 'Created vs resolved', 'Service levels', 'Waiting on you', 'Oldest open requests', 'Recently updated']) assert.ok(html.includes(s), s);
 });
+
+import { liveFilterJql, rangeCountJql, openCountJql } from '../src/customer-visibility.js';
+
+test('dashboard JQL keeps the customer boundary and only uses fixed filters', () => {
+  const orgs = [{ name: 'Ryanair' }];
+  const open = liveFilterJql('acc-1', '10000', orgs, { filter: 'open' });
+  assert.equal(open, 'project = 10000 AND (reporter = "acc-1" OR organizations in ("Ryanair")) AND statusCategory != Done ORDER BY created ASC');
+  assert.match(liveFilterJql('acc-1', '10000', orgs, { filter: 'resolvedRecent' }), /statusCategory = Done AND resolved >= -90d ORDER BY resolved DESC$/);
+  assert.throws(() => liveFilterJql('acc-1', '10000', orgs, { filter: 'everything' }), /Unknown/);
+  assert.equal(rangeCountJql('acc-1', '10000', [], { field: 'created', from: '2026-10-12', to: '2026-10-19' }), 'project = 10000 AND (reporter = "acc-1") AND created >= "2026-10-12" AND created < "2026-10-19"');
+  assert.throws(() => rangeCountJql('acc-1', '10000', [], { field: 'created', from: '2026-10-12" OR 1=1', to: '2026-10-19' }), /Invalid/);
+  assert.throws(() => rangeCountJql('acc-1', '10000', [], { field: 'updated', from: '2026-10-12', to: '2026-10-19' }), /Unknown/);
+  assert.match(openCountJql('acc-1', '10000', []), /statusCategory != Done$/);
+});
+
+test('server counts drive the open total and weekly trend when present', () => {
+  const m = buildLiveModel({ ...data, openTotal: 742, openTruncated: true, openCap: 500, weekly: [{ start: '2026-10-12', created: 40, resolved: 35 }, { start: '2026-10-19', created: 12, resolved: null }] }, { now: NOW });
+  assert.equal(m.kpis.open, 742);
+  assert.equal(m.trend.length, 2);
+  assert.equal(m.trend[0].created, 40);
+  assert.equal(m.kpis.createdThisWeek, 12);
+  assert.equal(m.kpis.resolvedThisWeek, 1, 'falls back to counting rows when a count is missing');
+  assert.ok(renderLiveDashboard(m, { now: NOW }).includes('500 oldest open requests'));
+});

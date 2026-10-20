@@ -37,7 +37,17 @@ export function buildLiveModel(data = {}, { now = Date.now(), weeks = 8 } = {}) 
   const resolvedSince = (ms) => rows.filter((r) => time(r.resolved) && time(r.resolved) >= now - ms);
 
   const thisWeek = weekStart(now);
-  const trend = Array.from({ length: weeks }, (_, i) => {
+  const counted = (n, fallback) => (Number.isFinite(n) ? n : fallback);
+  const serverWeeks = Array.isArray(data.weekly) && data.weekly.length ? data.weekly : null;
+  const trend = serverWeeks ? serverWeeks.map((w) => {
+    const start = time(w.start + 'T00:00:00Z'), end = start + 7 * DAY;
+    return {
+      start,
+      label: new Date(start).toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' }),
+      created: counted(w.created, rows.filter((r) => time(r.created) >= start && time(r.created) < end).length),
+      resolved: counted(w.resolved, rows.filter((r) => time(r.resolved) >= start && time(r.resolved) < end).length),
+    };
+  }) : Array.from({ length: weeks }, (_, i) => {
     const start = thisWeek - (weeks - 1 - i) * 7 * DAY, end = start + 7 * DAY;
     return {
       start,
@@ -57,18 +67,18 @@ export function buildLiveModel(data = {}, { now = Date.now(), weeks = 8 } = {}) 
 
   return {
     generatedAt: data.generatedAt || new Date(now).toISOString(),
-    truncated: Boolean(data.truncated),
-    cap: data.cap || rows.length,
+    truncated: Boolean(data.openTruncated ?? data.truncated),
+    cap: data.openCap || data.cap || rows.length,
     total: rows.length,
     splitName: data.splitField?.name || '',
     kpis: {
-      open: open.length,
+      open: counted(data.openTotal, open.length),
       waitingOnYou: waitingOnYou.length,
       waitingOnSupport: waitingOnSupport.length,
       breached: open.filter((r) => r.sla?.state === 'breached').length,
       atRisk: open.filter((r) => r.sla?.atRisk).length,
-      resolvedThisWeek: rows.filter((r) => time(r.resolved) >= thisWeek).length,
-      createdThisWeek: rows.filter((r) => time(r.created) >= thisWeek).length,
+      resolvedThisWeek: serverWeeks ? trend[trend.length - 1].resolved : rows.filter((r) => time(r.resolved) >= thisWeek).length,
+      createdThisWeek: serverWeeks ? trend[trend.length - 1].created : rows.filter((r) => time(r.created) >= thisWeek).length,
     },
     byStatus: countBy(open, (r) => r.status),
     bySplit: data.splitField ? countBy(open, (r) => r.split) : [],
@@ -109,7 +119,7 @@ export function renderLiveDashboard(model, { now = Date.now(), refreshSeconds = 
   const k = model.kpis;
   const kpi = (id, label, value, hint, tone = '') => `<button type="button" class="live-kpi ${tone}" data-kpi="${id}"><span>${esc(label)}</span><strong>${value}</strong><small>${esc(hint)}</small></button>`;
   const updated = new Date(model.generatedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  return `<div class="live-head"><div><span class="eyebrow">Live service dashboard</span><h3>Your service at a glance</h3><p>Updated ${esc(updated)} · refreshes every ${Math.round(refreshSeconds / 60)} minutes${model.truncated ? ` · based on your latest ${model.cap.toLocaleString()} requests` : ''}</p></div><button type="button" class="page-button live-refresh">Refresh</button></div>
+  return `<div class="live-head"><div><span class="eyebrow">Live service dashboard</span><h3>Your service at a glance</h3><p>Updated ${esc(updated)} · refreshes every ${Math.round(refreshSeconds / 60)} minutes${model.truncated ? ` · breakdowns use your ${model.cap.toLocaleString()} oldest open requests` : ''}</p></div><button type="button" class="page-button live-refresh">Refresh</button></div>
 <div class="live-kpis">
 ${kpi('open', 'Open requests', k.open, `${k.createdThisWeek} raised this week`)}
 ${kpi('awaiting-you', 'Waiting on you', k.waitingOnYou, 'Need your reply', k.waitingOnYou ? 'warn' : '')}
