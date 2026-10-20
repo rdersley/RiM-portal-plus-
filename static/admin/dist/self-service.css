@@ -1,0 +1,35 @@
+.self-service{margin-top:14px}.self-service>summary{cursor:pointer;font-weight:700;font-size:14px;padding:6px 0}.self-service .builder-block h3{margin:0 0 6px;font-size:14px}.self-service .check{display:flex;gap:8px;align-items:center;font-size:13px;margin-top:10px}.ss-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}.ss-table th{text-align:left;font-size:12px;color:var(--nq-text-subtlest);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--nq-border)}.ss-table td{padding:7px 8px;border-bottom:1px solid var(--nq-border);vertical-align:middle}.ss-table td small{display:block;color:var(--nq-text-subtlest);font-size:11px}.ss-table th:not(:first-child),.ss-table td:not(:first-child){text-align:center;width:120px}.ss-table input:disabled{opacity:.4;cursor:not-allowed}.self-service select:disabled{background:var(--nq-surface-sunken);color:var(--nq-text-subtlest)}@media (max-width:640px){.ss-table th:not(:first-child),.ss-table td:not(:first-child){width:auto}.self-service .grid{grid-template-columns:1fr}}
+
+.logo-preview-row{display:flex;align-items:center;gap:10px;margin-top:8px}.brand-logo-preview{max-height:48px;max-width:180px;border:1px solid var(--nq-border);border-radius:6px;padding:4px;background:var(--nq-surface)}
+
+/* Services header: Import from portal groups + Add category */
+.panel-title-row .title-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+/* Extra menu tabs: label, description, button label, button link */
+.menu-tab{grid-template-columns:1fr 2fr 1fr 1.5fr auto}
+@media (max-width:760px){.menu-tab{grid-template-columns:1fr}}
+
+/* Page layout picker in the dashboard options row */
+.layout-pick{display:flex;align-items:center;gap:8px}
+.layout-pick select{border:1px solid var(--nq-border-input);border-radius:5px;padding:4px 6px;background:var(--nq-surface-raised);color:var(--nq-text)}
+
+/* Backup & restore */
+.backup-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.file-button{display:inline-flex;align-items:center;cursor:pointer}
+#backupStatus.ok{color:var(--nq-text-success)}
+#backupStatus.error{color:var(--nq-text-danger)}
+.file-button{background:var(--nq-bg-neutral);color:var(--nq-text);min-height:32px;padding:0 12px;border-radius:var(--nq-radius-sm);font-weight:500;font-size:13px}
+.file-button:hover{background:var(--nq-bg-neutral-hovered)}
+
+/* Who can see Portal+ */
+.visibility-mode{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;font-size:13px}
+.visibility-mode label{display:flex;align-items:center;gap:6px}
+.visibility-people{margin-top:12px;display:grid;gap:10px}
+.people-search{position:relative;max-width:420px}
+.people-search input{width:100%;border:1px solid var(--nq-border-input);border-radius:5px;padding:8px;background:var(--nq-surface-raised);color:var(--nq-text)}
+.people-results{display:flex;flex-direction:column;margin-top:4px}
+.person-option{justify-content:flex-start;background:var(--nq-surface-raised);color:var(--nq-text);border:1px solid var(--nq-border);border-radius:0;min-height:34px}
+.person-option:hover,.person-option:focus-visible{background:var(--nq-surface-hovered)}
+.people-selected{display:flex;flex-wrap:wrap;gap:6px}
+.person-chip{display:inline-flex;align-items:center;gap:4px;background:var(--nq-bg-selected);color:var(--nq-text-selected);border-radius:12px;padding:2px 4px 2px 10px;font-size:12px;font-weight:600}
+.person-remove{min-height:20px;padding:0 6px;background:transparent;color:inherit;font-size:14px}
