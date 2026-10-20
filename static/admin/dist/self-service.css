@@ -33,3 +33,7 @@
 .people-selected{display:flex;flex-wrap:wrap;gap:6px}
 .person-chip{display:inline-flex;align-items:center;gap:4px;background:var(--nq-bg-selected);color:var(--nq-text-selected);border-radius:12px;padding:2px 4px 2px 10px;font-size:12px;font-weight:600}
 .person-remove{min-height:20px;padding:0 6px;background:transparent;color:inherit;font-size:14px}
+
+/* Dashboard options: the two pickers get room of their own */
+.module-grid .layout-pick{grid-column:span 2;flex-wrap:wrap}
+.module-grid .layout-pick select{flex:1;min-width:160px}

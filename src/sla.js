@@ -17,7 +17,8 @@ export function slaState(value) {
       name: safeString(value.name) || 'SLA',
       state: ongoing.breached === true ? 'breached' : ongoing.paused === true ? 'paused' : 'running',
       remaining: safeString(ongoing.remainingTime?.friendly),
-      target: safeString(ongoing.goalDuration?.friendly)
+      target: safeString(ongoing.goalDuration?.friendly),
+      atRisk: ongoing.breached !== true && ongoing.paused !== true && Number(ongoing.goalDuration?.millis) > 0 && Number(ongoing.remainingTime?.millis) >= 0 && Number(ongoing.remainingTime.millis) < Number(ongoing.goalDuration.millis) / 4
     };
   }
   const cycles = Array.isArray(value.completedCycles) ? value.completedCycles : [];
