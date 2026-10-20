@@ -7,6 +7,7 @@ modules:
   jiraServiceManagement:portalHeader:
     - key: rim-portal-plus-dashboard
       resource: portal-ui
+      viewportSize: xlarge
       resolver:
         function: portal-resolver
       pages:
