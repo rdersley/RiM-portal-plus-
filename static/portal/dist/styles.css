@@ -60,3 +60,10 @@
 
 /* Help center frame: Jira caps portal modules at 840px (about 744px usable), so keep the desktop rhythm down to 641px. */
 @media(min-width:641px) and (max-width:900px){.portal-page{padding:14px 12px 20px}.request-tools{grid-template-columns:repeat(4,minmax(0,1fr))}.request-tools .search-field{grid-column:1/-1}}
+
+/* Full screen (opened in a Forge modal): use the width instead of the portal's centre column */
+.expand-button{font-size:16px}
+.close-expanded{border:1px solid currentColor;background:transparent;color:inherit;border-radius:6px;padding:4px 10px;font-weight:700;font-size:12px;cursor:pointer;margin-left:6px}
+body.expanded .portal-page{max-width:1600px;padding:22px 28px 32px}
+body.expanded .portal-shell{min-height:100vh}
+body.expanded .category-grid.service-grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
