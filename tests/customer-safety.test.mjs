@@ -202,6 +202,34 @@ test('CSV export returns only the customer\'s visible requests', async () => {
   assert.deepEqual(exported.values.map((r) => r.issueKey).sort(), ['SD-1', 'SD-3']);
 });
 
+test('export adds description and latest public comment excerpts, never internal comments', async () => {
+  const doc = (text) => ({ type: 'doc', version: 1, content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] });
+  seed({ issues: [issue('SD-1', 'alice', { fields: {
+    description: doc(`Card reader on trolley 4 rejects contactless.\n${'More detail. '.repeat(60)}`),
+    comment: { comments: [
+      { body: doc('We have reset the device.'), created: '2026-09-02T10:00:00.000+0000', jsdPublic: true },
+      { body: doc('INTERNAL: customer is on a legacy contract'), created: '2026-09-04T10:00:00.000+0000', jsdPublic: false },
+      { body: doc('No flag, treat as internal'), created: '2026-09-05T10:00:00.000+0000' },
+      { body: doc('Please confirm it works now.'), created: '2026-09-03T10:00:00.000+0000', jsdPublic: true }
+    ] }
+  } }), issue('SD-3', 'bob', { orgIds: ['100'] })] });
+  const exported = await call('getExportRequests', 'alice');
+  const row = exported.values.find((r) => r.issueKey === 'SD-1');
+  assert.match(row.exportExcerpts.description, /^Card reader on trolley 4 rejects contactless\. More detail\./);
+  assert.ok(row.exportExcerpts.description.length <= 301 && row.exportExcerpts.description.endsWith('…'));
+  assert.equal(row.exportExcerpts.latestPublicComment, 'Please confirm it works now.');
+  assert.equal(row.exportExcerpts.latestPublicCommentDate, '2026-09-03T10:00:00.000+0000');
+  assert.doesNotMatch(JSON.stringify(exported), /INTERNAL|treat as internal/);
+  assert.ok(!row.requestFieldValues.some((f) => f.fieldId === 'comment' || f.fieldId === 'description'));
+  assert.deepEqual(exported.values.find((r) => r.issueKey === 'SD-3').exportExcerpts, { description: '', latestPublicComment: '', latestPublicCommentDate: '' });
+});
+
+test('dashboard search does not fetch descriptions or comments', async () => {
+  await call('getDashboard', 'alice');
+  const search = jira.calls.find((c) => c.path === '/rest/api/3/search/jql');
+  assert.ok(!search.body.fields.includes('comment') && !search.body.fields.includes('description'));
+});
+
 test('request detail offers editing only where Jira allows it, with real dropdown options', async () => {
   seed({
     issues: [issue('SD-1', 'alice', { fields: {
