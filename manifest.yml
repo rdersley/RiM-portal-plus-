@@ -1,0 +1,44 @@
+app:
+  id: ari:cloud:ecosystem::app/REPLACE-WITH-RETAIL-INMOTION-APP-ID
+  runtime:
+    name: nodejs22.x
+
+modules:
+  jiraServiceManagement:portalHeader:
+    - key: rim-portal-plus-dashboard
+      resource: portal-ui
+      resolver:
+        function: portal-resolver
+      pages:
+        - help_center
+      unlicensedAccess:
+        - customer
+
+  jira:projectSettingsPage:
+    - key: rim-portal-plus-settings
+      resource: admin-ui
+      resolver:
+        function: admin-resolver
+      title: Retail inMotion Portal+
+      layout: blank
+
+  function:
+    - key: portal-resolver
+      handler: portal-resolver.handler
+    - key: admin-resolver
+      handler: admin-resolver.handler
+
+resources:
+  - key: portal-ui
+    path: static/portal/dist
+  - key: admin-ui
+    path: static/admin/dist
+
+permissions:
+  scopes:
+    - read:servicedesk-request
+    - read:jira-work
+    - write:jira-work
+    - manage:servicedesk-customer
+    - read:jira-user
+    - storage:app
