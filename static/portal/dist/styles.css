@@ -64,6 +64,10 @@
 /* Full screen (opened in a Forge modal): use the width instead of the portal's centre column */
 .expand-button{font-size:16px}
 .close-expanded{border:1px solid currentColor;background:transparent;color:inherit;border-radius:6px;padding:4px 10px;font-weight:700;font-size:12px;cursor:pointer;margin-left:6px}
-body.expanded .portal-page{max-width:1600px;padding:22px 28px 32px}
+body.expanded .portal-page{max-width:none;padding:22px 32px 32px}
 body.expanded .portal-shell{min-height:100vh}
 body.expanded .category-grid.service-grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+body.expanded .request.cols-0,body.expanded .request-header.cols-0{grid-template-columns:110px 1fr 240px}
+body.expanded .request.cols-1,body.expanded .request-header.cols-1{grid-template-columns:110px 1fr minmax(140px,.6fr) 240px}
+body.expanded .request.cols-2,body.expanded .request-header.cols-2{grid-template-columns:110px 1fr repeat(2,minmax(130px,.5fr)) 240px}
+body.expanded .request.cols-3,body.expanded .request-header.cols-3{grid-template-columns:110px 1fr repeat(3,minmax(120px,.45fr)) 240px}
