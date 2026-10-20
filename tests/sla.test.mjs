@@ -20,6 +20,14 @@ test('primary SLA prefers Time to resolution', () => {
     customfield_1: { name: 'Time to first response', completedCycles: [cycle(false)] },
     customfield_2: { name: 'Time to resolution', ongoingCycle: cycle(true) }
   };
-  assert.deepEqual(primarySla(fields), { name: 'Time to resolution', state: 'breached', remaining: '2h', target: '8h' });
+  assert.deepEqual(primarySla(fields), { name: 'Time to resolution', state: 'breached', remaining: '2h', target: '8h', atRisk: false });
   assert.equal(primarySla({ summary: 'x' }), null);
+});
+
+test('a running SLA with under a quarter of its goal left is at risk', () => {
+  const sla = (remainingMs) => primarySla({ customfield_9: { name: 'Time to resolution', ongoingCycle: { breached: false, paused: false, remainingTime: { millis: remainingMs, friendly: 'x' }, goalDuration: { millis: 8 * 3600000, friendly: '8h' } } } });
+  assert.equal(sla(1 * 3600000).atRisk, true);
+  assert.equal(sla(3 * 3600000).atRisk, false);
+  const paused = primarySla({ customfield_9: { name: 'Time to resolution', ongoingCycle: { breached: false, paused: true, remainingTime: { millis: 60000 }, goalDuration: { millis: 8 * 3600000 } } } });
+  assert.equal(paused.atRisk, false);
 });
