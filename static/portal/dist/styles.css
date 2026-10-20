@@ -81,3 +81,5 @@ body.expanded .request.cols-3,body.expanded .request-header.cols-3{grid-template
 .split-tile.active{border-color:var(--brand);background:var(--nq-bg-selected)}
 .split-tile.active span{color:var(--brand)}
 .split-tile.unset strong{color:var(--nq-text-subtlest)}
+/* Full screen scrolls itself (inline, the frame grows to fit instead) */
+body.expanded .portal-shell{overflow-y:auto;overscroll-behavior:contain}
