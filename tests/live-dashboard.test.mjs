@@ -86,6 +86,35 @@ test('without a status mapping, customer statuses are waiting on the client and 
   assert.equal(m.kpis.waitingOnSupport, 2);
 });
 
+import { buildDrill, renderDrill } from '../static/portal/src/live-dashboard.js';
+
+test('drilling into a bar breaks that subset down by the drill-down field first', () => {
+  const rows = [
+    row('H-1', { split: 'Hardware', drill: 'Tablet › Screen', created: d(9) }),
+    row('H-2', { split: 'Hardware', drill: 'Tablet › Screen', status: 'Waiting for Customer', statusId: '20' }),
+    row('H-3', { split: 'Hardware', drill: 'Printer', sla: { state: 'breached' } }),
+    row('B-1', { split: 'Bond', drill: 'Printer' }),
+  ];
+  const m = buildLiveModel({ ...data, rows, drillField: { id: 'customfield_device', name: 'Device Type' } }, { now: NOW });
+  const hw = buildDrill(m, [{ dim: 'split', value: 'Hardware' }]);
+  assert.equal(hw.count, 3);
+  assert.deepEqual([hw.waitingOnYou, hw.breached], [1, 1]);
+  assert.deepEqual(hw.breakdowns.map((b) => b.dim), ['drill', 'status', 'type'], 'the clicked dimension is not repeated');
+  assert.deepEqual(hw.breakdowns[0].rows, [['Tablet › Screen', 2], ['Printer', 1]]);
+  assert.equal(hw.requests[0].key, 'H-1', 'oldest first');
+  const deeper = buildDrill(m, [{ dim: 'split', value: 'Hardware' }, { dim: 'drill', value: 'Printer' }]);
+  assert.deepEqual(deeper.requests.map((r) => r.key), ['H-3']);
+  const html = renderDrill(m, [{ dim: 'split', value: '<b>Hardware</b>' }]);
+  assert.ok(!html.includes('<b>Hardware') && html.includes('All open requests') && !html.includes('style='));
+});
+
+test('drill filters on switched-off fields are ignored, and Not set is drillable', () => {
+  const m = buildLiveModel(data, { now: NOW });
+  assert.equal(buildDrill(m, [{ dim: 'drill', value: 'x' }]).count, 3);
+  assert.deepEqual(buildDrill(m, [{ dim: 'split', value: 'Not set' }]).requests.map((r) => r.key), ['SD-3']);
+  assert.ok(renderLiveDashboard(m, { now: NOW }).includes('data-dim="split" data-value="Not set"'));
+});
+
 test('bars are drawn without inline style attributes', () => {
   assert.ok(!renderLiveDashboard(buildLiveModel(data, { now: NOW }), { now: NOW }).includes('style='));
 });

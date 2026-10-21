@@ -209,4 +209,8 @@ test('"Split open requests by" is stored per experience and rejects bad field id
   assert.deepEqual(ok.experiences[0].dashboard.openSplitField, { id: 'customfield_10050', name: 'SD Client' });
   const bad = await callAdmin('publishConfig', { serviceDeskId: '1', experiences: [{ ...experience({}), dashboard: { open: true, openSplitField: { id: 'cf"]) OR 1=1', name: 'x' } } }] });
   assert.equal(bad.experiences[0].dashboard.openSplitField, null);
+  const drill = await callAdmin('publishConfig', { serviceDeskId: '1', experiences: [{ ...experience({}), dashboard: { open: true, drillField: { id: 'customfield_10411', name: 'Device Type' } } }] });
+  assert.deepEqual(drill.experiences[0].dashboard.drillField, { id: 'customfield_10411', name: 'Device Type' });
+  const badDrill = await callAdmin('publishConfig', { serviceDeskId: '1', experiences: [{ ...experience({}), dashboard: { open: true, drillField: { id: 'x) OR 1=1', name: 'x' } } }] });
+  assert.equal(badDrill.experiences[0].dashboard.drillField, null);
 });
