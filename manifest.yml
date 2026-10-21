@@ -22,11 +22,19 @@ modules:
       title: Retail inMotion Portal+
       layout: blank
 
+  webtrigger:
+    - key: rim-portal-plus-hub-api
+      function: hub-api
+      response:
+        type: dynamic
+
   function:
     - key: portal-resolver
       handler: portal-resolver.handler
     - key: admin-resolver
       handler: admin-resolver.handler
+    - key: hub-api
+      handler: portal-resolver.hubApi
 
 resources:
   - key: portal-ui

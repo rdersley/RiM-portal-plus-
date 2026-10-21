@@ -90,6 +90,18 @@ jobs:
           test -n "$FORGE_EMAIL" || (echo "Missing FORGE_EMAIL" && exit 1)
           test -n "$FORGE_API_TOKEN" || (echo "Missing FORGE_API_TOKEN" && exit 1)
       - run: npm install --global @forge/cli
+      # Service Hub proof of concept: development only. The secret comes from the
+      # HUB_SECRET repository secret and is stored encrypted in Forge.
+      - name: Service Hub variables (development only)
+        if: env.DEPLOY_ENVIRONMENT == 'development'
+        env:
+          HUB_SECRET: ${{ secrets.HUB_SECRET }}
+          HUB_URL: ${{ vars.HUB_URL }}
+        run: |
+          if [ -z "$HUB_SECRET" ] || [ -z "$HUB_URL" ]; then echo "Service Hub not configured; skipping"; exit 0; fi
+          forge settings set usage-analytics false
+          forge variables set --environment "$DEPLOY_ENVIRONMENT" --encrypt HUB_SECRET "$HUB_SECRET"
+          forge variables set --environment "$DEPLOY_ENVIRONMENT" HUB_URL "$HUB_URL"
       - name: Deploy
         run: |
           forge settings set usage-analytics false
