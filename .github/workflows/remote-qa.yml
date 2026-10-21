@@ -22,6 +22,11 @@ on:
         description: Atlassian product
         required: true
         default: jira
+      approve_major:
+        description: Approve a Forge major version for this deploy (development only)
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -113,7 +118,11 @@ jobs:
         run: |
           forge settings set usage-analytics false
           forge settings set default-environment "$DEPLOY_ENVIRONMENT"
-          forge deploy --environment "$DEPLOY_ENVIRONMENT" --non-interactive
+          if [ "${{ inputs.approve_major }}" = "true" ] && [ "$DEPLOY_ENVIRONMENT" = "development" ]; then
+          forge deploy --environment "$DEPLOY_ENVIRONMENT" --non-interactive --approve MAJOR_VERSION_RULE
+          else
+            forge deploy --environment "$DEPLOY_ENVIRONMENT" --non-interactive
+          fi
       - name: Install or upgrade installation
         shell: bash
         run: |
