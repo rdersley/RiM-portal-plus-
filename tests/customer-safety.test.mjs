@@ -372,3 +372,13 @@ test('"Everyone" (the default) leaves visibility to the normal customer boundary
   store.set(`portalplus:config:${PROJECT}`, { ...experience(), visibility: { mode: 'everyone', accounts: [] } });
   assert.deepEqual(keys(await call('getDashboard', 'bob')), ['SD-2', 'SD-3', 'SD-5']);
 });
+
+test('"Split open requests by" fetches that field with the requests, without adding a column', async () => {
+  seed({ issues: [issue('SD-1', 'alice', { fields: { customfield_client: { value: 'RYR' } } })] });
+  store.get(`portalplus:config:${PROJECT}`).experiences[0].dashboard = { open: true, openSplitField: { id: 'customfield_client', name: 'SD Client' } };
+  const result = await call('getDashboard', 'alice');
+  const search = jira.calls.find((c) => c.path === '/rest/api/3/search/jql');
+  assert.ok(search.body.fields.includes('customfield_client'));
+  assert.deepEqual(result.requests.values[0].requestFieldValues.find((f) => f.fieldId === 'customfield_client')?.value, { value: 'RYR' });
+  assert.deepEqual(result.experience.requestColumns, []);
+});

@@ -203,3 +203,10 @@ test('discovery tells the admin UI which fields customers may edit', async () =>
   const byId = Object.fromEntries(discovery.selfServiceFieldCatalogue.map((f) => [f.id, f.editableSupported]));
   assert.deepEqual(byId, { customfield_notes: true, customfield_owner: false, customfield_ref: true });
 });
+
+test('"Split open requests by" is stored per experience and rejects bad field ids', async () => {
+  const ok = await callAdmin('publishConfig', { serviceDeskId: '1', experiences: [{ ...experience({}), dashboard: { open: true, openSplitField: { id: 'customfield_10050', name: 'SD Client' } } }] });
+  assert.deepEqual(ok.experiences[0].dashboard.openSplitField, { id: 'customfield_10050', name: 'SD Client' });
+  const bad = await callAdmin('publishConfig', { serviceDeskId: '1', experiences: [{ ...experience({}), dashboard: { open: true, openSplitField: { id: 'cf"]) OR 1=1', name: 'x' } } }] });
+  assert.equal(bad.experiences[0].dashboard.openSplitField, null);
+});
