@@ -2,7 +2,7 @@
 body.hub{overflow:auto;background:var(--nq-surface-sunken)}
 body.hub .portal-shell{min-height:100vh;overflow:visible}
 body.hub .topbar{position:sticky;top:0;z-index:5}
-body.hub .topbar-tools{display:flex;align-items:center;gap:6px}
+body.hub .topbar-tools{display:flex;align-items:center;gap:6px;margin-left:auto}
 body.hub .topbar-tools form{margin:0}
 .hub-link{text-decoration:none}
 .hub-intro{margin:4px 0 16px}

@@ -74,8 +74,10 @@ resolver.define('performRequestAction',async({context,payload})=>{const{experien
 // Service Hub (proof of concept). Only offered where HUB_URL and HUB_SECRET are set
 // for the environment, and only to customers who can see Portal+ here.
 const hubSecret=()=>String(process.env.HUB_SECRET||''),hubUrl=()=>String(process.env.HUB_URL||'').replace(/\/+$/,''),hubConfigured=()=>/^https?:\/\//.test(hubUrl())&&hubSecret().length>=32;
+// The portal page as a full address (the module context may give only a path), so the hub can link back.
+async function absolutePortalUrl(context){const loc=String(context?.extension?.location||'/servicedesk/customer/portals');let base=String(context?.siteUrl||'');if(!base){try{const r=await withTimeout(api.asApp().requestJira(route`/rest/api/3/serverInfo`,{headers:{Accept:'application/json'}}),3000,null);if(r&&r.ok)base=String((await r.json())?.baseUrl||'');}catch(_){}}try{return new URL(loc,base||undefined).toString();}catch(_){return'';}}
 resolver.define('hubStatus',async()=>({available:hubConfigured()}));
-resolver.define('createHubPass',async({context})=>{if(!hubConfigured())return{available:false};const{projectId,experience}=await contextData(context);if(!experience||!projectId||!context?.accountId)return{available:false};const{webTrigger}=await import('@forge/api'),api=await webTrigger.getUrl('rim-portal-plus-hub-api');const pass=createPass({accountId:context.accountId,projectId,location:context?.extension?.location||'',api},hubSecret());return{available:true,url:`${hubUrl()}/auth?pass=${encodeURIComponent(pass)}`};});
+resolver.define('createHubPass',async({context})=>{if(!hubConfigured())return{available:false};const{projectId,experience}=await contextData(context);if(!experience||!projectId||!context?.accountId)return{available:false};const{webTrigger}=await import('@forge/api'),api=await webTrigger.getUrl('rim-portal-plus-hub-api');const pass=createPass({accountId:context.accountId,projectId,location:await absolutePortalUrl(context),api},hubSecret());return{available:true,url:`${hubUrl()}/auth?pass=${encodeURIComponent(pass)}`};});
 export const handler=resolver.getDefinitions();
 
 // Web trigger the hub calls with a signed request. The account comes from the
