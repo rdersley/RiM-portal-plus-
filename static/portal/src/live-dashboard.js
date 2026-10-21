@@ -74,6 +74,9 @@ export function buildLiveModel(data = {}, { now = Date.now(), weeks = 8 } = {}) 
     cap: data.openCap || data.cap || rows.length,
     total: rows.length,
     splitName: data.splitField?.name || '',
+    drillName: data.drillField?.name || '',
+    // Open requests kept for drill-down (click a bar to break it down further).
+    openRows: open.map((r) => ({ ...brief(r), created: r.created, status: r.status || '', type: r.requestType || '', split: r.split || '', drill: r.drill || '', waiting: onCustomer(r), sla: r.sla || null })),
     kpis: {
       open: counted(data.openTotal, open.length),
       waitingOnYou: waitingOnYou.length,
@@ -94,10 +97,47 @@ export function buildLiveModel(data = {}, { now = Date.now(), weeks = 8 } = {}) 
   };
 }
 
-function bars(rows, total) {
+// Bars are buttons: clicking one drills into that value (data-dim / data-value).
+function bars(rows, dim) {
   if (!rows.length) return '<p class="live-empty">Nothing open.</p>';
   const max = Math.max(...rows.map((r) => r[1]), 1);
-  return `<ul class="live-bars">${rows.map(([label, n]) => `<li><span class="live-bar-label" title="${esc(label)}">${esc(label)}</span><svg class="live-bar" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect class="live-bar-track" width="100" height="10" rx="5"/><rect class="live-bar-fill" width="${Math.max(3, Math.round((n / max) * 100))}" height="10" rx="5"/></svg><strong>${n}</strong></li>`).join('')}</ul>${total ? '' : ''}`;
+  return `<ul class="live-bars">${rows.map(([label, n]) => `<li><button type="button" class="live-bar-row" data-dim="${esc(dim)}" data-value="${esc(label)}" title="Break down ${esc(label)}"><span class="live-bar-label">${esc(label)}</span><svg class="live-bar" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect class="live-bar-track" width="100" height="10" rx="5"/><rect class="live-bar-fill" width="${Math.max(3, Math.round((n / max) * 100))}" height="10" rx="5"/></svg><strong>${n}</strong></button></li>`).join('')}</ul>`;
+}
+
+const DIM_VALUE = { status: (r) => r.status, split: (r) => r.split, type: (r) => r.type, drill: (r) => r.drill };
+const dimLabel = (model, dim) => ({ status: 'status', type: 'request type', split: model.splitName, drill: model.drillName }[dim] || dim);
+const dimOn = (model, dim) => Boolean(DIM_VALUE[dim]) && (dim === 'split' ? Boolean(model.splitName) : dim === 'drill' ? Boolean(model.drillName) : true);
+
+// The open requests matching every drill filter ([{dim, value}]), with breakdowns by
+// each dimension not already filtered on — the drill-down field first.
+export function buildDrill(model, filters = []) {
+  const valid = filters.filter((f) => dimOn(model, f.dim));
+  const rows = model.openRows.filter((r) => valid.every((f) => (DIM_VALUE[f.dim](r) || 'Not set') === f.value));
+  const used = new Set(valid.map((f) => f.dim));
+  const breakdowns = ['drill', 'split', 'status', 'type'].filter((dim) => dimOn(model, dim) && !used.has(dim)).map((dim) => ({ dim, title: `By ${dimLabel(model, dim)}`, rows: countBy(rows, DIM_VALUE[dim]) }));
+  return {
+    filters: valid,
+    count: rows.length,
+    waitingOnYou: rows.filter((r) => r.waiting).length,
+    breached: rows.filter((r) => r.sla?.state === 'breached').length,
+    atRisk: rows.filter((r) => r.sla?.atRisk).length,
+    breakdowns,
+    requests: [...rows].sort((a, b) => time(a.created) - time(b.created)).slice(0, 100),
+  };
+}
+
+export function renderDrill(model, filters) {
+  const d = buildDrill(model, filters);
+  const crumbs = [`<button type="button" class="live-crumb" data-depth="0">All open requests</button>`, ...d.filters.map((f, i) => `<button type="button" class="live-crumb" data-depth="${i + 1}" ${i === d.filters.length - 1 ? 'aria-current="page"' : ''}>${esc(f.value)}</button>`)].join('<span aria-hidden="true">›</span>');
+  const stat = (label, n, tone = '') => `<div class="live-kpi static ${tone}"><span>${esc(label)}</span><strong>${n}</strong></div>`;
+  return `<div class="live-head"><div><span class="eyebrow">Live service dashboard · breakdown</span><nav class="live-crumbs" aria-label="Breakdown">${crumbs}</nav><p>${d.filters.map((f) => `${esc(dimLabel(model, f.dim))}: ${esc(f.value)}`).join(' · ')}${model.truncated ? ` · from your ${model.cap.toLocaleString()} oldest open requests` : ''}</p></div><button type="button" class="page-button live-back">Back</button></div>
+<div class="live-kpis drill">
+${stat('Open requests', d.count)}${stat('Waiting on you', d.waitingOnYou, d.waitingOnYou ? 'warn' : '')}${stat('SLA breached', d.breached, d.breached ? 'bad' : 'good')}${stat('SLA at risk', d.atRisk, d.atRisk ? 'warn' : 'good')}
+</div>
+<div class="live-grid">
+${d.breakdowns.map((b) => `<article class="live-card"><h4>${esc(b.title)}</h4>${bars(b.rows, b.dim)}</article>`).join('')}
+<article class="live-card live-wide"><h4>Requests${d.count > d.requests.length ? ` · oldest ${d.requests.length} of ${d.count}` : ''}</h4>${list(d.requests, 'No open requests.', (r) => [r.status, r.drill && !d.filters.some((f) => f.dim === 'drill') ? r.drill : '', `${r.ageDays} d old`].filter(Boolean).join(' · '))}</article>
+</div>`;
 }
 
 function trendChart(trend) {
@@ -122,7 +162,7 @@ export function renderLiveDashboard(model, { now = Date.now(), refreshSeconds = 
   const k = model.kpis;
   const kpi = (id, label, value, hint, tone = '') => `<button type="button" class="live-kpi ${tone}" data-kpi="${id}"><span>${esc(label)}</span><strong>${value}</strong><small>${esc(hint)}</small></button>`;
   const updated = new Date(model.generatedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  return `<div class="live-head"><div><span class="eyebrow">Live service dashboard</span><h3>Your service at a glance</h3><p>Updated ${esc(updated)} · refreshes every ${Math.round(refreshSeconds / 60)} minutes${model.truncated ? ` · breakdowns use your ${model.cap.toLocaleString()} oldest open requests` : ''}</p></div><button type="button" class="page-button live-refresh">Refresh</button></div>
+  return `<div class="live-head"><div><span class="eyebrow">Live service dashboard</span><h3>Your service at a glance</h3><p>Updated ${esc(updated)} · refreshes every ${Math.round(refreshSeconds / 60)} minutes · click a bar to break it down${model.truncated ? ` · breakdowns use your ${model.cap.toLocaleString()} oldest open requests` : ''}</p></div><button type="button" class="page-button live-refresh">Refresh</button></div>
 <div class="live-kpis">
 ${kpi('open', 'Open requests', k.open, `${k.createdThisWeek} raised this week`)}
 ${kpi('awaiting-you', 'Waiting on you', k.waitingOnYou, 'Need your reply', k.waitingOnYou ? 'warn' : '')}
@@ -132,9 +172,9 @@ ${kpi('at-risk', 'SLA at risk', k.atRisk, 'Under 25% of time left', k.atRisk ? '
 ${kpi('resolved', 'Resolved this week', k.resolvedThisWeek, 'Since Monday', 'good')}
 </div>
 <div class="live-grid">
-<article class="live-card"><h4>Open by status</h4>${bars(model.byStatus)}</article>
-${model.splitName ? `<article class="live-card"><h4>Open by ${esc(model.splitName)}</h4>${bars(model.bySplit)}</article>` : ''}
-<article class="live-card"><h4>Open by request type</h4>${bars(model.byType)}</article>
+<article class="live-card"><h4>Open by status</h4>${bars(model.byStatus, 'status')}</article>
+${model.splitName ? `<article class="live-card"><h4>Open by ${esc(model.splitName)}</h4>${bars(model.bySplit, 'split')}</article>` : ''}
+<article class="live-card"><h4>Open by request type</h4>${bars(model.byType, 'type')}</article>
 <article class="live-card live-wide"><h4>Created vs resolved · last ${model.trend.length} weeks</h4>${trendChart(model.trend)}</article>
 <article class="live-card live-sla"><h4>Service levels</h4><div class="live-sla-figure"><strong>${model.sla.metPct == null ? '—' : `${model.sla.metPct}%`}</strong><span>of SLAs met · last 90 days${model.sla.measured ? ` (${model.sla.met} of ${model.sla.measured})` : ''}</span></div><div class="live-sla-figure"><strong>${model.sla.avgResolutionMs == null ? '—' : esc(formatDuration(model.sla.avgResolutionMs))}</strong><span>average time to resolve · last 30 days${model.sla.resolved30 ? ` (${model.sla.resolved30} resolved)` : ''}</span></div></article>
 <article class="live-card"><h4>Waiting on you</h4>${list(model.waitingList, 'Nothing is waiting on you.', (r) => `${r.ageDays} d old · ${r.status}`)}</article>
