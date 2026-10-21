@@ -136,7 +136,7 @@ ${stat('Open requests', d.count)}${stat('Waiting on you', d.waitingOnYou, d.wait
 </div>
 <div class="live-grid">
 ${d.breakdowns.map((b) => `<article class="live-card"><h4>${esc(b.title)}</h4>${bars(b.rows, b.dim)}</article>`).join('')}
-<article class="live-card live-wide"><h4>Requests${d.count > d.requests.length ? ` · oldest ${d.requests.length} of ${d.count}` : ''}</h4>${list(d.requests, 'No open requests.', (r) => [r.status, r.drill && !d.filters.some((f) => f.dim === 'drill') ? r.drill : '', `${r.ageDays} d old`].filter(Boolean).join(' · '))}</article>
+<article class="live-card live-full"><h4>Requests${d.count > d.requests.length ? ` · oldest ${d.requests.length} of ${d.count}` : ''}</h4>${list(d.requests, 'No open requests.', (r) => [r.status, r.drill && !d.filters.some((f) => f.dim === 'drill') ? r.drill : '', `${r.ageDays} d old`].filter(Boolean).join(' · '))}</article>
 </div>`;
 }
 
