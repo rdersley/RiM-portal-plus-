@@ -55,11 +55,38 @@ const page = (title, body) => `<!doctype html><html lang="en"><head><meta charse
 const signedOut = (message, portal = '') => page('Retail inMotion Service Hub', `<main class="hub-signin"><div class="hub-signin-card"><span class="hub-logo">R</span><h1>Retail inMotion Service Hub</h1><p>${esc(message)}</p>${portal ? `<a class="primary-button" href="${esc(portal)}">Go to the portal</a>` : '<p class="hub-muted">Sign in to the Retail inMotion portal and choose <strong>Service Hub</strong>.</p>'}</div></main>`);
 
 // Calls the Portal+ web trigger for this session's customer.
-async function portalPlus(s, op) {
-  const { body, signature } = signRequest({ op, acc: s.acc, pid: s.pid, loc: s.loc }, SECRET);
+async function portalPlus(s, op, extra = {}) {
+  const { body, signature } = signRequest({ ...extra, op, acc: s.acc, pid: s.pid, loc: s.loc }, SECRET);
   const r = await fetch(s.api, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Hub-Signature': signature }, body, signal: AbortSignal.timeout(30000) });
   const data = await r.json().catch(() => ({}));
   return { status: r.status, data };
+}
+
+// Reports: requests raised and resolved in the range, fetched page by page from
+// Portal+ (each page re-checks access) and cached briefly per customer and range.
+const REPORT_CAP = 3000, REPORT_CACHE_MS = 5 * 60 * 1000, reportCache = new Map();
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+async function reportRows(s, field, from, to) {
+  const rows = [];
+  let token = '';
+  do {
+    const { status, data } = await portalPlus(s, 'report', { field, from, to, token });
+    if (status !== 200) return { status, data };
+    rows.push(...(data.rows || []));
+    token = data.next || '';
+  } while (token && rows.length < REPORT_CAP);
+  return { status: 200, rows: rows.slice(0, REPORT_CAP), truncated: Boolean(token) };
+}
+async function report(s, from, to) {
+  if (!DAY_RE.test(from) || !DAY_RE.test(to)) return { status: 400, data: { error: 'Choose a valid date range.' } };
+  const key = `${s.acc}|${s.pid}|${from}|${to}`, hit = reportCache.get(key);
+  if (hit && hit.at > Date.now() - REPORT_CACHE_MS) return { status: 200, data: hit.data };
+  const [created, resolved] = await Promise.all([reportRows(s, 'created', from, to), reportRows(s, 'resolved', from, to)]);
+  for (const part of [created, resolved]) if (part.status !== 200) return part;
+  const data = { from, to, cap: REPORT_CAP, created: created.rows, resolved: resolved.rows, createdTruncated: created.truncated, resolvedTruncated: resolved.truncated, generatedAt: new Date().toISOString() };
+  for (const [k, v] of reportCache) if (v.at < Date.now() - REPORT_CACHE_MS) reportCache.delete(k);
+  reportCache.set(key, { at: Date.now(), data });
+  return { status: 200, data };
 }
 
 const ASSETS = {
@@ -95,6 +122,10 @@ createServer(async (req, res) => {
       if (!s) return send(res, 401, JSON.stringify({ error: 'Your session has ended. Open the Service Hub from the portal again.' }), 'application/json');
       // Same-origin only: a state-free GET API, but refuse cross-site callers anyway.
       if (req.headers['sec-fetch-site'] && req.headers['sec-fetch-site'] !== 'same-origin') return send(res, 403, '{}', 'application/json');
+      if (url.pathname === '/api/report' && req.method === 'GET') {
+        const { status, data } = await report(s, url.searchParams.get('from') || '', url.searchParams.get('to') || '');
+        return send(res, status, JSON.stringify(data), 'application/json');
+      }
       const op = { '/api/session': 'session', '/api/live': 'live' }[url.pathname];
       if (!op || req.method !== 'GET') return send(res, 404, '{}', 'application/json');
       const { status, data } = await portalPlus(s, op);
