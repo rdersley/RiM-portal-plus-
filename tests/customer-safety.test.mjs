@@ -401,6 +401,7 @@ test('a request tab shows only the customer\'s own requests that match its JQL, 
   assert.deepEqual(result.values.map((r) => r.issueKey).sort(), ['SD-1', 'SD-3']);
   assert.deepEqual(result.counts, { open: 1, done: 1 });
   assert.equal(result.total, 2);
+  assert.equal(result.next, '', 'one page is enough here');
   const search = jira.calls.find((c) => c.path === '/rest/api/3/search/jql');
   assert.ok(search.body.fields.includes('priority'), 'tab columns are fetched');
   const narrowed = await call('getRequestTab', 'alice', { tabId: 'hw', counterId: 'open', withCounts: false });

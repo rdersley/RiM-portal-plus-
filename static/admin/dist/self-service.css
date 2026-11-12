@@ -38,7 +38,7 @@
 .module-grid .layout-pick{grid-column:span 2;flex-wrap:wrap}
 .module-grid .layout-pick select{flex:1;min-width:160px}
 /* Request tabs editor */
-.request-tabs-admin{margin-top:18px}
+.request-tabs-admin .request-tab-list{display:grid;gap:0}
 .request-tab-editor.mini{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:12px;border:1px solid var(--nq-border);border-radius:10px;background:var(--nq-surface-sunken);margin-top:10px}
 .rt-head{display:grid;grid-template-columns:1fr auto auto auto;gap:6px;align-items:center}
 .rt-field{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:700;color:var(--nq-text-subtle)}
