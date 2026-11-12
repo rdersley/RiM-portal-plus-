@@ -17,9 +17,15 @@ function inline(text) {
 
 export function renderRichText(source) {
   const blocks = String(source ?? '').replace(/\r\n?/g, '\n').split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
+  // Within a block, runs of "- " lines become a list and other runs a paragraph,
+  // so "Raise a request with:\n- the device ID" works without a blank line.
+  const bullet = /^\s*[-*•]\s+/;
   return blocks.map((b) => {
-    const lines = b.split('\n');
-    if (lines.every((l) => /^\s*[-*•]\s+/.test(l))) return `<ul>${lines.map((l) => `<li>${inline(l.replace(/^\s*[-*•]\s+/, ''))}</li>`).join('')}</ul>`;
-    return `<p>${lines.map(inline).join('<br>')}</p>`;
+    const runs = [];
+    for (const l of b.split('\n')) {
+      const isItem = bullet.test(l), last = runs[runs.length - 1];
+      if (last && last.list === isItem) last.lines.push(l); else runs.push({ list: isItem, lines: [l] });
+    }
+    return runs.map((r) => (r.list ? `<ul>${r.lines.map((l) => `<li>${inline(l.replace(bullet, ''))}</li>`).join('')}</ul>` : `<p>${r.lines.map(inline).join('<br>')}</p>`)).join('');
   }).join('');
 }

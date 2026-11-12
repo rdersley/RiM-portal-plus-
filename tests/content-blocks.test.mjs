@@ -37,6 +37,7 @@ test('scheduled blocks show only between their dates (inclusive)', () => {
 test('formatted text escapes everything and allows only safe formatting', () => {
   assert.equal(renderRichText('Hello **there** and *you*\nsecond line'), '<p>Hello <strong>there</strong> and <em>you</em><br>second line</p>');
   assert.equal(renderRichText('- one\n- two'), '<ul><li>one</li><li>two</li></ul>');
+  assert.equal(renderRichText('Raise a request with:\n- the device ID\n- your crew code\nThanks'), '<p>Raise a request with:</p><ul><li>the device ID</li><li>your crew code</li></ul><p>Thanks</p>');
   assert.equal(renderRichText('<img src=x onerror=alert(1)>'), '<p>&lt;img src=x onerror=alert(1)&gt;</p>');
   assert.equal(renderRichText('[Status](https://status.example.com/a?b=1&c=2)'), '<p><a href="https://status.example.com/a?b=1&amp;c=2" data-rich-link="https://status.example.com/a?b=1&amp;c=2">Status</a></p>');
   assert.equal(renderRichText('[Bad](javascript:void0)'), '<p>Bad</p>');
