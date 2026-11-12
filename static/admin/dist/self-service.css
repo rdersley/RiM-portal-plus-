@@ -37,3 +37,15 @@
 /* Dashboard options: the two pickers get room of their own */
 .module-grid .layout-pick{grid-column:span 2;flex-wrap:wrap}
 .module-grid .layout-pick select{flex:1;min-width:160px}
+/* Request tabs editor */
+.request-tabs-admin{margin-top:18px}
+.request-tab-editor.mini{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:12px;border:1px solid var(--nq-border);border-radius:10px;background:var(--nq-surface-sunken);margin-top:10px}
+.rt-head{display:grid;grid-template-columns:1fr auto auto auto;gap:6px;align-items:center}
+.rt-field{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:700;color:var(--nq-text-subtle)}
+.rt-field .muted,.rt-label .muted{font-weight:400}
+.rt-field textarea,.rt-field select{font:inherit;font-weight:400;font-family:inherit}
+.rt-jql,.rt-c-jql{font-family:ui-monospace,SFMono-Regular,Consolas,monospace!important;font-size:12.5px}
+.rt-counters{display:grid;gap:6px}
+.rt-label{font-size:12.5px;font-weight:700;color:var(--nq-text-subtle)}
+.rt-counter{display:grid;grid-template-columns:minmax(120px,1fr) 3fr;gap:6px}
+@media(max-width:700px){.rt-counter,.rt-head{grid-template-columns:1fr}}
