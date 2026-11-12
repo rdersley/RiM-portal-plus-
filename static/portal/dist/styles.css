@@ -200,3 +200,39 @@ body.menu-launcher .portal-shell{display:none!important}
 .greeting{display:block;font-size:13px;font-weight:700;color:var(--nq-text-subtle);margin-bottom:2px}
 .greeting[hidden]{display:none}
 @media(max-width:640px){.cb-banner{flex-direction:column;align-items:flex-start}}
+/* Reports */
+.rep-range{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;margin:0 0 14px;padding:12px 14px;border:1px solid var(--nq-border);border-radius:12px;background:var(--nq-surface-raised)}
+.rep-range label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:700;color:var(--nq-text-subtle)}
+.rep-range select,.rep-range input{font:inherit;font-weight:400;color:var(--nq-text);background:var(--nq-bg-input);border:1px solid var(--nq-border);border-radius:8px;padding:7px 9px}
+.rep-range label[hidden]{display:none}
+.rep-print{margin-left:auto}
+.rep-chips{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 12px}
+.rep-chip{font:inherit;font-size:12.5px;border:1px solid var(--nq-border-brand);border-radius:999px;background:var(--nq-bg-selected);color:var(--nq-text);padding:4px 10px;cursor:pointer}
+.rep-chip.clear{border-color:var(--nq-border);background:none;color:var(--nq-text-subtle)}
+.rep-breakdown{grid-column:span 1}
+.rep-table-wrap{overflow-x:auto}
+.rep-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.rep-table th{text-align:left;font-weight:700;color:var(--nq-text-subtlest);padding:4px 6px;border-bottom:1px solid var(--nq-border);white-space:nowrap}
+.rep-table td{padding:5px 6px;border-bottom:1px solid var(--nq-border);vertical-align:middle;white-space:nowrap}
+.rep-table td:first-child{max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.rep-bar-cell{display:grid;grid-template-columns:minmax(60px,1fr) auto;align-items:center;gap:6px;min-width:120px}
+.rep-filter{font:inherit;border:0;background:none;padding:0;color:var(--nq-text);cursor:pointer;text-align:left;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.rep-filter:hover,.rep-filter:focus-visible{color:var(--brand);text-decoration:underline}
+.live-bar-row.static{cursor:default}
+.live-bar-row.static:hover{background:none}
+.rep-sla-met{fill:var(--nq-bg-success-bold)}
+.rep-sla-breached{fill:var(--nq-bg-danger-bold)}
+.live-legend i.rep-met{background:var(--nq-bg-success-bold)}
+.live-legend i.rep-breached{background:var(--nq-bg-danger-bold)}
+.rep-sla-chart{height:170px}
+@media(max-width:760px){.rep-print{margin-left:0}}
+.period-inline{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.period-inline[hidden],#period-full[hidden]{display:none}
+.period-inline h3{margin:2px 0}
+.period-inline p{margin:0;color:var(--nq-text-subtle);font-size:13px}
+/* Print / PDF from full screen: only the period report, without its controls */
+@media print{
+  body.expanded .topbar,body.expanded .portal-page>*:not(#period-reports),.rep-range,.rep-export,.rep-chip.clear{display:none!important}
+  body.expanded .portal-shell{overflow:visible!important;height:auto!important}
+  .live-card,.live-kpi{break-inside:avoid}
+}

@@ -50,6 +50,16 @@ export function rangeCountJql(accountId, projectId, orgs = [], { scope = null, f
   return customerJql(accountId, projectId, orgs, { scope }).replace(/ ORDER BY created DESC$/, ` AND ${field} >= "${from}" AND ${field} < "${to}"`);
 }
 
+// Report rows for one date range: the same fixed filter, ordered by that date,
+// and never longer than a year.
+export const MAX_REPORT_DAYS = 366;
+export function reportJql(accountId, projectId, orgs = [], { scope = null, field, from, to }) {
+  const jql = rangeCountJql(accountId, projectId, orgs, { scope, field, from, to });
+  const days = (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000;
+  if (!(days > 0 && days <= MAX_REPORT_DAYS)) throw new Error('Invalid date range.');
+  return `${jql} ORDER BY ${field} ASC`;
+}
+
 export function openCountJql(accountId, projectId, orgs = [], { scope = null } = {}) {
   return customerJql(accountId, projectId, orgs, { scope }).replace(/ ORDER BY created DESC$/, ' AND statusCategory != Done');
 }

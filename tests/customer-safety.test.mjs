@@ -422,3 +422,23 @@ test('customers outside the visibility list get no tab data', async () => {
   store.get(`portalplus:config:${PROJECT}`).visibility = { mode: 'selected', accounts: [{ accountId: 'bob' }] };
   assert.deepEqual(await call('getRequestTab', 'alice', { tabId: 'hw' }), { audienceAllowed: false });
 });
+
+// Period reports: off unless switched on, and always inside the customer boundary.
+test('reports return nothing until the admin switches them on', async () => {
+  assert.deepEqual(await call('getReportPage', 'alice', { field: 'created', from: '2026-08-01', to: '2026-10-01' }), { audienceAllowed: true, enabled: false });
+});
+
+test('a report page holds only the customer\'s own requests in the date range', async () => {
+  seed({ issues: [
+    issue('SD-1', 'alice', { created: '2026-09-05T10:00:00.000+0000' }),
+    issue('SD-2', 'alice', { created: '2026-07-05T10:00:00.000+0000' }),
+    issue('SD-3', 'carol', { created: '2026-09-06T10:00:00.000+0000' })
+  ] });
+  store.get(`portalplus:config:${PROJECT}`).experiences[0].dashboard = { open: true, reports: true };
+  const page = await call('getReportPage', 'alice', { field: 'created', from: '2026-09-01', to: '2026-10-01' });
+  assert.equal(page.enabled, true);
+  assert.deepEqual(page.rows.map((r) => r.key), ['SD-1']);
+  assert.equal(page.next, '');
+  await assert.rejects(call('getReportPage', 'alice', { field: 'created', from: '2026-09-01" OR 1=1', to: '2026-10-01' }), /Invalid/);
+  await assert.rejects(call('getReportPage', 'alice', { field: 'updated', from: '2026-09-01', to: '2026-10-01' }), /Unknown/);
+});
