@@ -28,3 +28,11 @@ assert.doesNotMatch(service,/asUser\s*\(/,'request detail service must remain as
 assert.match(manifest,/write:jira-work/,'customer-approved edits and transitions require Jira write scope');
 
 console.log('Portal+ request detail UI/security wiring tests passed.');
+
+// Settings values with double quotes (e.g. JQL) must survive a redraw: escape as &quot; (with the semicolon).
+import { readFileSync as readSource } from 'node:fs';
+for (const file of ['static/admin/src/app.js', 'static/portal/src/app.js']) {
+  const src = readSource(new URL(`../${file}`, import.meta.url), 'utf8');
+  if (!src.includes(`'"':'&quot;'`) || /'"':'&quot'/.test(src)) throw new Error(`${file} must escape double quotes as &quot;`);
+}
+console.log('quote escaping tests passed');
