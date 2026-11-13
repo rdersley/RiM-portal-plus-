@@ -236,3 +236,6 @@ body.menu-launcher .portal-shell{display:none!important}
   body.expanded .portal-shell{overflow:visible!important;height:auto!important}
   .live-card,.live-kpi{break-inside:avoid}
 }
+/* Admin preview ribbon */
+.preview-ribbon{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;padding:8px 16px;background:var(--nq-bg-warning-subtler);border-bottom:1px solid var(--nq-border-warning);color:var(--nq-text);font-size:13px}
+.preview-ribbon[hidden]{display:none}

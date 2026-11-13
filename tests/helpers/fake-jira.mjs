@@ -87,6 +87,11 @@ export function createFakeJira({ issues = [], memberships = {}, organizations = 
     const url = new URL(String(path), 'https://jira.test');
     calls.push({ method, path: url.pathname, query: Object.fromEntries(url.searchParams), body });
 
+    const orgById = /^\/rest\/servicedeskapi\/organization\/(\d+)$/.exec(url.pathname);
+    if (method === 'GET' && orgById) {
+      const org = organizations.find((o) => o.id === orgById[1]);
+      return org ? json(200, org) : json(404, { errorMessage: 'Organization not found' });
+    }
     if (method === 'GET' && url.pathname === '/rest/servicedeskapi/organization') {
       const ids = memberships[url.searchParams.get('accountId')] || [];
       return json(200, { values: organizations.filter((org) => ids.includes(org.id)) });
