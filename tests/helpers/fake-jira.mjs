@@ -34,6 +34,8 @@ function matchesClause(issue, clause) {
   if (category) return (issue.statusCategory === 'done') === (category[1] === '=');
   const option = /^cf\[(\d+)\] = "([^"]*)"$/.exec(clause);
   if (option) return optionValues(issue.fields?.[`customfield_${option[1]}`]).includes(option[2]);
+  const statuses = /^status = (?:\d+|"[^"]*")(?: OR status = (?:\d+|"[^"]*"))*$/.test(clause) ? [...clause.matchAll(/status = (?:(\d+)|"([^"]*)")/g)] : null;
+  if (statuses) return statuses.some(([, id, name]) => (id ? String(issue.statusId) === id : issue.statusName === name));
   throw new Error(`Unsupported clause in fake Jira: ${clause}`);
 }
 

@@ -23,7 +23,8 @@ mock.module('@forge/kvs', {
 });
 
 const { handler } = await import('../src/portal-resolver.js');
-const { customerJql, escapeJql } = await import('../src/customer-visibility.js');
+const awaitedVisibility = await import('../src/customer-visibility.js');
+const { customerJql, escapeJql } = awaitedVisibility;
 
 // The JSM portal header only receives portal.id (the service desk ID), never a
 // project ID; service desk 35 belongs to PROJECT in the fake Jira.
@@ -480,4 +481,29 @@ test('the "Preview as" list is only available inside a valid preview', async () 
   storePreview();
   assert.deepEqual(await call('getPreviewOrganisations', 'alice'), { organisations: [] }, 'not from the portal');
   assert.deepEqual(await callOn(previewOn('11111111-1111-4111-8111-111111111111'), 'getPreviewOrganisations', 'alice'), { organisations: [] });
+});
+
+test('home cards count every visible request when there is more than one page', async () => {
+  const many = Array.from({ length: 130 }, (_, i) => {
+    const n = i + 1, done = n <= 20, waiting = n > 20 && n <= 30;
+    return { ...issue(`SD-${n}`, 'alice', { statusId: done ? STATUS.resolved : waiting ? STATUS.waiting : STATUS.open }), ...(done ? { statusCategory: 'done', statusName: 'Resolved' } : {}) };
+  });
+  seed({ issues: [...many, issue('SD-999', 'carol')] });
+  const result = await call('getDashboard', 'alice');
+  assert.equal(result.requests.values.length, 100);
+  // awaitingSupport has no statuses mapped, so it falls back to the page.
+  assert.deepEqual(result.counts, { visible: 130, open: 110, awaitingCustomer: 10, awaitingSupport: null });
+});
+
+test('home cards use the loaded page when it holds every request', async () => {
+  seed();
+  assert.equal((await call('getDashboard', 'alice')).counts, null);
+});
+
+test('home count JQL keeps the customer boundary and quotes status names', () => {
+  const { homeCountJql } = awaitedVisibility;
+  const jql = homeCountJql('alice', PROJECT, [{ name: 'Acme' }], { filter: 'statuses', statuses: ['10063', 'Waiting "on" you', ' '] });
+  assert.equal(jql, 'project = 10000 AND (reporter = "alice" OR organizations in ("Acme")) AND (status = 10063 OR status = "Waiting \\"on\\" you")');
+  assert.equal(homeCountJql('alice', PROJECT, [], { filter: 'statuses', statuses: [] }), null);
+  assert.throws(() => homeCountJql('alice', PROJECT, [], { filter: 'anything' }));
 });

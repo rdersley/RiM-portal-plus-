@@ -63,3 +63,16 @@ export function reportJql(accountId, projectId, orgs = [], { scope = null, field
 export function openCountJql(accountId, projectId, orgs = [], { scope = null } = {}) {
   return customerJql(accountId, projectId, orgs, { scope }).replace(/ ORDER BY created DESC$/, ' AND statusCategory != Done');
 }
+
+// Count queries for the home cards: every request the customer can see, not
+// just the first page Portal+ loads. Status IDs (digits) or names from the
+// experience's status mapping; nothing typed by the customer.
+export function homeCountJql(accountId, projectId, orgs = [], { scope = null, filter = 'visible', statuses = [] } = {}) {
+  const base = customerJql(accountId, projectId, orgs, { scope }).replace(/ ORDER BY created DESC$/, '');
+  if (filter === 'visible') return base;
+  if (filter === 'open') return `${base} AND (statusCategory != Done)`;
+  if (filter !== 'statuses') throw new Error('Unknown count filter.');
+  const list = [...new Set((Array.isArray(statuses) ? statuses : []).map((s) => String(s ?? '').trim()).filter(Boolean))];
+  if (!list.length) return null;
+  return `${base} AND (${list.map((s) => (/^\d+$/.test(s) ? `status = ${s}` : `status = "${escapeJql(s)}"`)).join(' OR ')})`;
+}
