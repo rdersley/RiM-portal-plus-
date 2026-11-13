@@ -467,3 +467,11 @@ test('previews need the right token, a fresh record and the same user', async ()
   storePreview({ expires: Date.now() - 1 });
   assert.equal((await callOn(previewOn(TOKEN), 'getDashboard', 'alice')).audienceAllowed, false, 'expired');
 });
+
+test('"Preview as" shows the page as the chosen organisation', async () => {
+  storePreview();
+  const asAcme = { ...previewOn(TOKEN), modal: { ...previewOn(TOKEN).modal, asOrganizationId: '100' } };
+  assert.deepEqual(keys(await callOn(asAcme, 'getDashboard', 'alice')), ['SD-1', 'SD-3'], 'alice\'s own plus requests shared with Acme');
+  const bad = { ...previewOn(TOKEN), modal: { ...previewOn(TOKEN).modal, asOrganizationId: '1 OR 1=1' } };
+  assert.deepEqual(keys(await callOn(bad, 'getDashboard', 'alice')), ['SD-1', 'SD-5'], 'a malformed id falls back to the audience');
+});

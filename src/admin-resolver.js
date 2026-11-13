@@ -62,5 +62,5 @@ resolver.define('simulateAudience',async({context,payload})=>{const p=context?.e
 // so its calls arrive here; hand them to the portal resolver, which only honours
 // them with the admin's preview token (see src/preview.js).
 const adminHandler=resolver.getDefinitions();
-const asPreview=(event,pv)=>({...event,context:{...(event.context||{}),extension:{...(event.context?.extension||{}),modal:{preview:true,previewToken:String(pv?.token||''),experienceIndex:Number(pv?.experienceIndex)||0}}}});
+const asPreview=(event,pv)=>({...event,context:{...(event.context||{}),extension:{...(event.context?.extension||{}),modal:{preview:true,previewToken:String(pv?.token||''),experienceIndex:Number(pv?.experienceIndex)||0,asOrganizationId:String(pv?.asOrganizationId||'')}}}});
 export const handler=(event,ctx)=>{const pv=event?.call?.payload?.__preview;if(pv&&typeof pv==='object')return portalHandler(asPreview(event,pv),ctx);return adminHandler(event,ctx);};

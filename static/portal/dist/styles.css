@@ -239,3 +239,5 @@ body.menu-launcher .portal-shell{display:none!important}
 /* Admin preview ribbon */
 .preview-ribbon{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;padding:8px 16px;background:var(--nq-bg-warning-subtler);border-bottom:1px solid var(--nq-border-warning);color:var(--nq-text);font-size:13px}
 .preview-ribbon[hidden]{display:none}
+.preview-as{margin-left:auto;display:flex;align-items:center;gap:6px;font-weight:700}
+.preview-as select{font:inherit;font-weight:400;border:1px solid var(--nq-border);border-radius:6px;padding:3px 6px;background:var(--nq-surface-raised);color:var(--nq-text)}
