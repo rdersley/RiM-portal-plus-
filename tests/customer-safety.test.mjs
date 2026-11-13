@@ -475,3 +475,9 @@ test('"Preview as" shows the page as the chosen organisation', async () => {
   const bad = { ...previewOn(TOKEN), modal: { ...previewOn(TOKEN).modal, asOrganizationId: '1 OR 1=1' } };
   assert.deepEqual(keys(await callOn(bad, 'getDashboard', 'alice')), ['SD-1', 'SD-5'], 'a malformed id falls back to the audience');
 });
+
+test('the "Preview as" list is only available inside a valid preview', async () => {
+  storePreview();
+  assert.deepEqual(await call('getPreviewOrganisations', 'alice'), { organisations: [] }, 'not from the portal');
+  assert.deepEqual(await callOn(previewOn('11111111-1111-4111-8111-111111111111'), 'getPreviewOrganisations', 'alice'), { organisations: [] });
+});
