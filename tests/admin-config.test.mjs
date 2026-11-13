@@ -216,7 +216,6 @@ test('"Split open requests by" is stored per experience and rejects bad field id
 });
 
 test('preview calls from the settings page reach the customer resolver, and only with the token', async () => {
-  const preview = { type: 'jira:projectSettingsPage', project: { id: '10000' }, modal: { preview: true, previewToken: '00000000-0000-4000-8000-000000000000', experienceIndex: 0 } };
-  const result = await admin({ call: { functionKey: 'getDashboard', payload: {} }, context: { extension: preview, environmentType: 'DEVELOPMENT' } }, { principal: { accountId: 'admin-1' } });
+  const result = await admin({ call: { functionKey: 'getDashboard', payload: { __preview: { token: '00000000-0000-4000-8000-000000000000', experienceIndex: 0 } } }, context: { extension: { type: 'jira:projectSettingsPage', project: { id: '10000' } }, environmentType: 'DEVELOPMENT' } }, { principal: { accountId: 'admin-1' } });
   assert.equal(result.audienceAllowed, false, 'unknown token: nothing');
 });
