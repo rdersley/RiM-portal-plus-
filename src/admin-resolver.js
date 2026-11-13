@@ -12,6 +12,7 @@ import {normalizeRequestTabs,validateRequestTabs,SYSTEM_COLUMNS} from './request
 import {normalizeContentBlocks} from './content-blocks.js';
 import {PREVIEW_TTL_MS,previewKey} from './preview.js';
 import {randomUUID} from 'node:crypto';
+import {handler as portalHandler} from './portal-resolver.js';
 import {buildBackup,parseBackup,logoIdsFor} from './backup.js';
 import {normalizeVisibility,validateVisibility} from './visibility.js';
 const resolver=new Resolver(),CONFIG_VERSION=12,MAX_CUSTOM_COLUMNS=MAX_REQUEST_COLUMNS,MAX_EXPERIENCES=12,ROUTING_POLICY='most-specific-then-order';
@@ -57,4 +58,8 @@ resolver.define('exportBackup',async({context})=>{const p=context?.extension?.pr
 resolver.define('restoreBackup',async({context,payload})=>{const p=context?.extension?.project?.id;if(!p)throw new Error('Missing project context.');const b=parseBackup(payload?.backup,p);let published=null;if(b.published){const experiences=(b.published.experiences||[]).map(e=>({...e,branding:{...(e.branding||{}),logoData:b.logos[String(e.id)]||''}}));published=await publish(context,{serviceDeskId:b.published.serviceDeskId,experiences,visibility:b.published.visibility});}if(b.draft){const draft=migrateConfig({...b.draft,updatedAt:new Date().toISOString()});await kvs.set(draftKey(p),draft);for(const e of draft.experiences)if(b.logos[e.id]&&!(b.published?.experiences||[]).some(x=>String(x.id)===String(e.id)))await kvs.set(logoKey(p,e.id),b.logos[e.id]);}return{ok:true,restoredPublished:Boolean(published),restoredDraft:Boolean(b.draft),experiences:(published?.experiences||b.draft?.experiences||[]).length,exportedAt:b.exportedAt};});
 resolver.define('discardDraft',async({context})=>{const p=context?.extension?.project?.id;if(!p)throw new Error('Missing project context.');await kvs.delete(draftKey(p));return{ok:true};});
 resolver.define('simulateAudience',async({context,payload})=>{const p=context?.extension?.project?.id;if(!p)throw new Error('Missing project context.');const c=migrateConfig(await kvs.get(draftKey(p))||await kvs.get(publishedKey(p)));return simulateRouting(c,Array.isArray(payload?.organizationIds)?payload.organizationIds:[]);});
-export const handler=resolver.getDefinitions();
+// The admin preview opens the customer page in a modal from this settings page,
+// so its calls arrive here; hand them to the portal resolver, which only honours
+// them with the admin's preview token (see src/preview.js).
+const adminHandler=resolver.getDefinitions();
+export const handler=(event,ctx)=>event?.context?.extension?.modal?.preview===true?portalHandler(event,ctx):adminHandler(event,ctx);
