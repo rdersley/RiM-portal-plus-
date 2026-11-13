@@ -6,7 +6,7 @@
 const QUOTED = '"((?:\\\\.|[^"\\\\])*)"';
 const unescape = (text) => text.replace(/\\(.)/g, '$1');
 const JQL = new RegExp(
-  `^project = (\\d+) AND \\(reporter = ${QUOTED}(?: OR organizations in \\(((?:${QUOTED.replace('(', '(?:')},?)+)\\))?\\)(?: AND cf\\[(\\d+)\\] in \\(((?:${QUOTED.replace('(', '(?:')},?)+)\\))?(?: AND key = ${QUOTED})?((?: AND \\([^()]*\\))*)(?: ORDER BY (?:created|updated) (?:ASC|DESC))?$`
+  `^project = (\\d+) AND \\(reporter = ${QUOTED}(?: OR organizations in \\(((?:${QUOTED.replace('(', '(?:')},?)+)\\))?\\)(?: AND cf\\[(\\d+)\\] in \\(((?:${QUOTED.replace('(', '(?:')},?)+)\\))?(?: AND key = ${QUOTED})?(?: AND (created|resolved) >= "(\\d{4}-\\d{2}-\\d{2})" AND (?:created|resolved) < "(\\d{4}-\\d{2}-\\d{2})")?((?: AND \\([^()]*\\))*)(?: ORDER BY (?:created|updated|resolved) (?:ASC|DESC))?$`
 );
 
 const quotedList = (list) => (list ? [...list.matchAll(new RegExp(QUOTED, 'g'))].map((m) => unescape(m[1])) : []);
@@ -14,13 +14,15 @@ const quotedList = (list) => (list ? [...list.matchAll(new RegExp(QUOTED, 'g'))]
 export function parseCustomerJql(jql) {
   const match = JQL.exec(jql);
   if (!match) throw new Error(`Unexpected JQL shape: ${jql}`);
-  const [, projectId, reporter, orgList, scopeFieldId, scopeList, key, extra] = match;
+  const [, projectId, reporter, orgList, scopeFieldId, scopeList, key, rangeField, rangeFrom, rangeTo, extra] = match;
   return {
     projectId,
     reporter: unescape(reporter),
     orgs: quotedList(orgList),
     scope: scopeFieldId ? { fieldId: `customfield_${scopeFieldId}`, values: quotedList(scopeList) } : null,
     key: key ? unescape(key) : '',
+    // Report date range: [from, to) on created or resolved.
+    range: rangeField ? { field: rangeField, from: rangeFrom, to: rangeTo } : null,
     // Request-tab and counter clauses, each added as " AND (...)".
     clauses: extra ? [...extra.matchAll(/ AND \(([^()]*)\)/g)].map((m) => m[1]) : []
   };
@@ -56,6 +58,7 @@ export function createFakeJira({ issues = [], memberships = {}, organizations = 
       .filter((issue) => !query.scope || optionValues(issue.fields?.[query.scope.fieldId]).some((value) => query.scope.values.includes(value)))
       .filter((issue) => !query.key || issue.key === query.key)
       .filter((issue) => query.clauses.every((clause) => matchesClause(issue, clause)))
+      .filter((issue) => !query.range || ((d) => d && d.slice(0, 10) >= query.range.from && d.slice(0, 10) < query.range.to)(query.range.field === 'created' ? issue.created : issue.resolved))
       .sort((a, b) => b.created.localeCompare(a.created));
   }
 
@@ -84,6 +87,9 @@ export function createFakeJira({ issues = [], memberships = {}, organizations = 
     const url = new URL(String(path), 'https://jira.test');
     calls.push({ method, path: url.pathname, query: Object.fromEntries(url.searchParams), body });
 
+    if (method === 'GET' && !discovery && /^\/rest\/servicedeskapi\/servicedesk\/\d+\/organization$/.test(url.pathname)) {
+      return json(200, { values: organizations, isLastPage: true });
+    }
     if (method === 'GET' && url.pathname === '/rest/servicedeskapi/organization') {
       const ids = memberships[url.searchParams.get('accountId')] || [];
       return json(200, { values: organizations.filter((org) => ids.includes(org.id)) });

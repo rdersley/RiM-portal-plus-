@@ -422,3 +422,62 @@ test('customers outside the visibility list get no tab data', async () => {
   store.get(`portalplus:config:${PROJECT}`).visibility = { mode: 'selected', accounts: [{ accountId: 'bob' }] };
   assert.deepEqual(await call('getRequestTab', 'alice', { tabId: 'hw' }), { audienceAllowed: false });
 });
+
+// Period reports: off unless switched on, and always inside the customer boundary.
+test('reports return nothing until the admin switches them on', async () => {
+  assert.deepEqual(await call('getReportPage', 'alice', { field: 'created', from: '2026-08-01', to: '2026-10-01' }), { audienceAllowed: true, enabled: false });
+});
+
+test('a report page holds only the customer\'s own requests in the date range', async () => {
+  seed({ issues: [
+    issue('SD-1', 'alice', { created: '2026-09-05T10:00:00.000+0000' }),
+    issue('SD-2', 'alice', { created: '2026-07-05T10:00:00.000+0000' }),
+    issue('SD-3', 'carol', { created: '2026-09-06T10:00:00.000+0000' })
+  ] });
+  store.get(`portalplus:config:${PROJECT}`).experiences[0].dashboard = { open: true, reports: true };
+  const page = await call('getReportPage', 'alice', { field: 'created', from: '2026-09-01', to: '2026-10-01' });
+  assert.equal(page.enabled, true);
+  assert.deepEqual(page.rows.map((r) => r.key), ['SD-1']);
+  assert.equal(page.next, '');
+  await assert.rejects(call('getReportPage', 'alice', { field: 'created', from: '2026-09-01" OR 1=1', to: '2026-10-01' }), /Invalid/);
+  await assert.rejects(call('getReportPage', 'alice', { field: 'updated', from: '2026-09-01', to: '2026-10-01' }), /Unknown/);
+});
+
+// Admin preview: only with the token the settings page created, fresh, for the same user.
+const TOKEN = '3f2c1a9e-8b7d-4c6e-9a1b-2c3d4e5f6a7b';
+const previewOn = (token, index = 0) => ({ type: 'jira:projectSettingsPage', project: { id: PROJECT }, modal: { preview: true, previewToken: token, experienceIndex: index } });
+function storePreview({ accountId = 'alice', expires = Date.now() + 60000 } = {}) {
+  const config = experience();
+  config.experiences[0] = { ...config.experiences[0], displayName: 'Draft heading', audienceOrganizationIds: ['200'] };
+  store.set(`portalplus:preview:${PROJECT}:${TOKEN}`, { accountId, expires, config });
+}
+
+test('a preview shows the admin\'s unsaved settings with the experience\'s audience organisations', async () => {
+  storePreview();
+  const result = await callOn(previewOn(TOKEN), 'getDashboard', 'alice');
+  assert.equal(result.experience.displayName, 'Draft heading');
+  assert.deepEqual(keys(result), ['SD-1', 'SD-5'], 'alice\'s own plus requests shared with Beta, the experience\'s audience');
+});
+
+test('previews need the right token, a fresh record and the same user', async () => {
+  storePreview();
+  assert.equal((await callOn(previewOn('not-a-token'), 'getDashboard', 'alice')).audienceAllowed, false);
+  assert.equal((await callOn(previewOn('11111111-1111-4111-8111-111111111111'), 'getDashboard', 'alice')).audienceAllowed, false);
+  assert.equal((await callOn(previewOn(TOKEN), 'getDashboard', 'bob')).audienceAllowed, false, 'another user cannot use the token');
+  storePreview({ expires: Date.now() - 1 });
+  assert.equal((await callOn(previewOn(TOKEN), 'getDashboard', 'alice')).audienceAllowed, false, 'expired');
+});
+
+test('"Preview as" shows the page as the chosen organisation', async () => {
+  storePreview();
+  const asAcme = { ...previewOn(TOKEN), modal: { ...previewOn(TOKEN).modal, asOrganizationId: '100' } };
+  assert.deepEqual(keys(await callOn(asAcme, 'getDashboard', 'alice')), ['SD-1', 'SD-3'], 'alice\'s own plus requests shared with Acme');
+  const bad = { ...previewOn(TOKEN), modal: { ...previewOn(TOKEN).modal, asOrganizationId: '1 OR 1=1' } };
+  assert.deepEqual(keys(await callOn(bad, 'getDashboard', 'alice')), ['SD-1', 'SD-5'], 'a malformed id falls back to the audience');
+});
+
+test('the "Preview as" list is only available inside a valid preview', async () => {
+  storePreview();
+  assert.deepEqual(await call('getPreviewOrganisations', 'alice'), { organisations: [] }, 'not from the portal');
+  assert.deepEqual(await callOn(previewOn('11111111-1111-4111-8111-111111111111'), 'getPreviewOrganisations', 'alice'), { organisations: [] });
+});
