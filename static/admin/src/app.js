@@ -1,6 +1,6 @@
 import{invoke,view,Modal}from'@forge/bridge';
 import{importPortalGroups}from'./portal-groups.js';import{enableTheme}from'@retailinmotion/ui/theme';
-const $=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let requestTypes=[],requestTypeGroups=[],organizations=[],statuses=[],fields=[],catalogue=[],scopeFields=[],splitFields=[],systemColumns=[],maxColumns=8,serviceDeskId='',experiences=[],licenseActive=true,suppress=false,visibility={mode:'everyone',accounts:[]},peopleTimer=0;
 const uid=p=>`${p}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,selected=el=>[...el.selectedOptions].map(o=>o.value);
 function options(items,values=[]){const set=new Set(values.map(String));return items.map(x=>`<option value="${esc(x.id)}" ${set.has(String(x.id))?'selected':''}>${esc(x.name)}</option>`).join('');}
