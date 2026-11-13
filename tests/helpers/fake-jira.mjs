@@ -6,7 +6,7 @@
 const QUOTED = '"((?:\\\\.|[^"\\\\])*)"';
 const unescape = (text) => text.replace(/\\(.)/g, '$1');
 const JQL = new RegExp(
-  `^project = (\\d+) AND \\(reporter = ${QUOTED}(?: OR organizations in \\(((?:${QUOTED.replace('(', '(?:')},?)+)\\))?\\)(?: AND cf\\[(\\d+)\\] in \\(((?:${QUOTED.replace('(', '(?:')},?)+)\\))?(?: AND key = ${QUOTED})? ORDER BY created DESC$`
+  `^project = (\\d+) AND \\(reporter = ${QUOTED}(?: OR organizations in \\(((?:${QUOTED.replace('(', '(?:')},?)+)\\))?\\)(?: AND cf\\[(\\d+)\\] in \\(((?:${QUOTED.replace('(', '(?:')},?)+)\\))?(?: AND key = ${QUOTED})?((?: AND \\([^()]*\\))*)(?: ORDER BY (?:created|updated) (?:ASC|DESC))?$`
 );
 
 const quotedList = (list) => (list ? [...list.matchAll(new RegExp(QUOTED, 'g'))].map((m) => unescape(m[1])) : []);
@@ -14,14 +14,25 @@ const quotedList = (list) => (list ? [...list.matchAll(new RegExp(QUOTED, 'g'))]
 export function parseCustomerJql(jql) {
   const match = JQL.exec(jql);
   if (!match) throw new Error(`Unexpected JQL shape: ${jql}`);
-  const [, projectId, reporter, orgList, scopeFieldId, scopeList, key] = match;
+  const [, projectId, reporter, orgList, scopeFieldId, scopeList, key, extra] = match;
   return {
     projectId,
     reporter: unescape(reporter),
     orgs: quotedList(orgList),
     scope: scopeFieldId ? { fieldId: `customfield_${scopeFieldId}`, values: quotedList(scopeList) } : null,
-    key: key ? unescape(key) : ''
+    key: key ? unescape(key) : '',
+    // Request-tab and counter clauses, each added as " AND (...)".
+    clauses: extra ? [...extra.matchAll(/ AND \(([^()]*)\)/g)].map((m) => m[1]) : []
   };
+}
+
+// The few tab/counter clauses the tests use; anything else fails loudly.
+function matchesClause(issue, clause) {
+  const category = /^statusCategory (=|!=) Done$/.exec(clause);
+  if (category) return (issue.statusCategory === 'done') === (category[1] === '=');
+  const option = /^cf\[(\d+)\] = "([^"]*)"$/.exec(clause);
+  if (option) return optionValues(issue.fields?.[`customfield_${option[1]}`]).includes(option[2]);
+  throw new Error(`Unsupported clause in fake Jira: ${clause}`);
 }
 
 // Dropdown values are { value } objects (single) or arrays of them (multi).
@@ -44,6 +55,7 @@ export function createFakeJira({ issues = [], memberships = {}, organizations = 
       .filter((issue) => issue.reporter === query.reporter || issue.orgIds.some((id) => query.orgs.includes(orgName(id))))
       .filter((issue) => !query.scope || optionValues(issue.fields?.[query.scope.fieldId]).some((value) => query.scope.values.includes(value)))
       .filter((issue) => !query.key || issue.key === query.key)
+      .filter((issue) => query.clauses.every((clause) => matchesClause(issue, clause)))
       .sort((a, b) => b.created.localeCompare(a.created));
   }
 
@@ -76,7 +88,9 @@ export function createFakeJira({ issues = [], memberships = {}, organizations = 
       const ids = memberships[url.searchParams.get('accountId')] || [];
       return json(200, { values: organizations.filter((org) => ids.includes(org.id)) });
     }
+    if (method === 'POST' && url.pathname === '/rest/api/3/search/approximate-count') return json(200, { count: visibleTo(parseCustomerJql(body.jql)).length });
     if (method === 'POST' && url.pathname === '/rest/api/3/search/jql') {
+      if (!/ ORDER BY /.test(body.jql)) throw new Error(`Search without ORDER BY: ${body.jql}`);
       const all = visibleTo(parseCustomerJql(body.jql));
       const start = body.nextPageToken ? Number(body.nextPageToken) : 0;
       const page = all.slice(start, start + body.maxResults);

@@ -382,3 +382,43 @@ test('"Split open requests by" fetches that field with the requests, without add
   assert.deepEqual(result.requests.values[0].requestFieldValues.find((f) => f.fieldId === 'customfield_client')?.value, { value: 'RYR' });
   assert.deepEqual(result.experience.requestColumns, []);
 });
+
+// Request tabs: admin JQL narrows inside the customer boundary, never widens it.
+function withTabs(tabs) {
+  store.get(`portalplus:config:${PROJECT}`).experiences[0].requestTabs = tabs;
+}
+const hardwareTab = { id: 'hw', title: 'Hardware', jql: 'cf[10445] = "Hardware"', columns: [{ id: 'priority', name: 'Priority' }], counters: [{ id: 'open', name: 'Open', jql: 'statusCategory != Done' }, { id: 'done', name: 'Resolved', jql: 'statusCategory = Done' }] };
+
+test('a request tab shows only the customer\'s own requests that match its JQL, with counter totals', async () => {
+  seed({ issues: [
+    issue('SD-1', 'alice', { fields: { customfield_10445: { value: 'Hardware' } } }),
+    issue('SD-2', 'alice', { fields: { customfield_10445: { value: 'Crew' } } }),
+    { ...issue('SD-3', 'alice', { fields: { customfield_10445: { value: 'Hardware' } } }), statusCategory: 'done' },
+    issue('SD-4', 'carol', { fields: { customfield_10445: { value: 'Hardware' } } })
+  ] });
+  withTabs([hardwareTab]);
+  const result = await call('getRequestTab', 'alice', { tabId: 'hw' });
+  assert.deepEqual(result.values.map((r) => r.issueKey).sort(), ['SD-1', 'SD-3']);
+  assert.deepEqual(result.counts, { open: 1, done: 1 });
+  assert.equal(result.total, 2);
+  assert.equal(result.next, '', 'one page is enough here');
+  const search = jira.calls.find((c) => c.path === '/rest/api/3/search/jql');
+  assert.ok(search.body.fields.includes('priority'), 'tab columns are fetched');
+  const narrowed = await call('getRequestTab', 'alice', { tabId: 'hw', counterId: 'open', withCounts: false });
+  assert.deepEqual(narrowed.values.map((r) => r.issueKey), ['SD-1']);
+  assert.equal(narrowed.counts, null);
+});
+
+test('an unknown tab returns nothing, and a tampered tab JQL is refused rather than run', async () => {
+  withTabs([hardwareTab]);
+  assert.deepEqual(await call('getRequestTab', 'alice', { tabId: 'other' }), { audienceAllowed: true, missing: true });
+  withTabs([{ ...hardwareTab, jql: 'cf[10445] = "Hardware") OR (project = 10000' }]);
+  await assert.rejects(call('getRequestTab', 'alice', { tabId: 'hw' }), /not set up/);
+  assert.ok(!jira.calls.some((c) => c.path === '/rest/api/3/search/jql'));
+});
+
+test('customers outside the visibility list get no tab data', async () => {
+  withTabs([hardwareTab]);
+  store.get(`portalplus:config:${PROJECT}`).visibility = { mode: 'selected', accounts: [{ accountId: 'bob' }] };
+  assert.deepEqual(await call('getRequestTab', 'alice', { tabId: 'hw' }), { audienceAllowed: false });
+});

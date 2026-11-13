@@ -14,6 +14,15 @@ modules:
       unlicensedAccess:
         - customer
 
+  jiraServiceManagement:portalUserMenuAction:
+    - key: rim-portal-plus-menu
+      title: Service dashboard
+      resource: portal-ui
+      resolver:
+        function: portal-resolver
+      unlicensedAccess:
+        - customer
+
   jira:projectSettingsPage:
     - key: rim-portal-plus-settings
       resource: admin-ui
